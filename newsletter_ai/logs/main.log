@@ -1,0 +1,4 @@
+[2025-09-29 16:34:13] [ERROR] Application failed: 'main' at line 49: GmailAuthenticator.__init__() got an unexpected keyword argument 'creds_path'
+[2025-09-29 16:36:43] [ERROR] Application failed: 'main' at line 49: GmailAuthenticator.__init__() got an unexpected keyword argument 'creds_path'
+[2025-09-29 16:37:15] [ERROR] Application failed: 'main' at line 49: GmailAuthenticator.__init__() got an unexpected keyword argument 'creds_path'
+[2025-09-29 16:37:56] [ERROR] Application failed: 'main' at line 53: Gmail authentication failed
