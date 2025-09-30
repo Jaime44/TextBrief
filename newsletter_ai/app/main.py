@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 
 from tools.logger import AppLogger
-from tools.gmail_authenticator import GmailAuthenticator
+from tools.gmail.gmail_client import GmailClient
+from tools.gmail.gmail_authenticator import GmailAuthenticator
 
 
 def load_environment_variables(env_path: str = ".env") -> dict:
@@ -21,9 +22,7 @@ def load_environment_variables(env_path: str = ".env") -> dict:
     # Load .env file
     if not os.path.exists(env_path):
         raise FileNotFoundError(f".env file not found at path: {env_path}")
-
     load_dotenv(dotenv_path=env_path)
-
     # Retrieve required variables
     try:
         creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_DESKTOP_APP")
@@ -46,18 +45,52 @@ def main():
 
     try:
         env_vars = load_environment_variables(path_relative_env_from_app)
-        gmail_service = GmailAuthenticator(
+        authenticator = GmailAuthenticator(
             credentials_path=env_vars["creds_path"],
             token_path=env_vars["token_path"],
         )
-        gmail_service.authenticate(env_vars["scopes"])
+        authenticator.authenticate(env_vars["scopes"])
+        gmail_service = authenticator.get_service()
+        gmail_client = GmailClient(gmail_service)
+        profile = gmail_client.get_profile()
+        profile = gmail_client.get_profile()
+        profile = gmail_client.get_profile()
+        logger.debug(f'------------------------------------------------------>> Profile: {profile}')
+
     except Exception as e:
+        print(f"Application failed: {e}")
         _,_, exec_tb = sys.exc_info()
         line_number = exec_tb.tb_lineno if exec_tb else 'unknown'
         function_name = exec_tb.tb_frame.f_code.co_name if exec_tb else 'unknown'
         error_message = f"Application failed: '{function_name}' at line {line_number}: {e}"
         logger.error(error_message)
-        print(f"Application failed: {e}")
+
+def clear_files_in_directory(directory: str="/home/jmorenos/workarea/githubRepo/smart-newsletters/newsletter_ai/logs/") -> None:
+    """
+    Clear the contents of all files in the given directory.
+    
+    Args:
+        directory (str): Path to the target directory.
+    
+    Raises:
+        FileNotFoundError: If the directory does not exist.
+        Exception: If any command fails.
+    """
+    import subprocess
+    if not os.path.isdir(directory):
+        raise FileNotFoundError(f"Directory does not exist: {directory}")
+
+    # Use shell command 'truncate' safely on each file
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        if os.path.isfile(file_path):
+            try:
+                subprocess.run(["truncate", "-s", "0", file_path], check=True)
+                # print(f"Cleared: {file_path}")
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to clear {file_path}: {e}")
+
 
 if __name__ == "__main__":
+    clear_files_in_directory()
     main()
