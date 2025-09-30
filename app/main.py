@@ -65,7 +65,7 @@ def main():
         error_message = f"Application failed: '{function_name}' at line {line_number}: {e}"
         logger.error(error_message)
 
-def clear_files_in_directory(directory: str="/home/jmorenos/workarea/githubRepo/smart-newsletters/newsletter_ai/logs/") -> None:
+def clear_files_in_directory(directory: str="/home/jmorenos/workarea/githubRepo/smart-newsletters/logs/") -> None:
     """
     Clear the contents of all files in the given directory.
     
