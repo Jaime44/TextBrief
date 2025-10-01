@@ -1,13 +1,14 @@
 import os
 import sys
-import traceback
 
+from typing import Dict, Any
 from dotenv import load_dotenv
 
 
 from tools.logger import AppLogger
 from tools.gmail.gmail_client import GmailClient
 from tools.gmail.gmail_authenticator import GmailAuthenticator
+from tools import utils as Utils
 
 
 def load_environment_variables(env_path: str = ".env") -> dict:
@@ -39,62 +40,104 @@ def load_environment_variables(env_path: str = ".env") -> dict:
     except KeyError as e:
         raise KeyError(f"Error loading environment variables: {e}")
 
+# def main():
+#     logger = AppLogger("main.log")
+#     path_relative_env_from_app = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../config", ".env")
+
+#     try:
+#         env_vars = load_environment_variables(path_relative_env_from_app)
+#         authenticator = GmailAuthenticator(
+#             credentials_path=env_vars["creds_path"],
+#             token_path=env_vars["token_path"],
+#         )
+#         authenticator.authenticate(env_vars["scopes"])
+#         gmail_service = authenticator.get_service()
+#         gmail_client = GmailClient(gmail_service)
+#         profile = gmail_client.get_profile()
+#         profile = gmail_client.get_profile()
+#         profile = gmail_client.get_profile()
+#         logger.debug(f'------------------------------------------------------>> Profile: {profile}')
+
+#     except Exception as e:
+#         print(f"Application failed: {e}")
+#         _,_, exec_tb = sys.exc_info()
+#         line_number = exec_tb.tb_lineno if exec_tb else 'unknown'
+#         function_name = exec_tb.tb_frame.f_code.co_name if exec_tb else 'unknown'
+#         error_message = f"Application failed: '{function_name}' at line {line_number}: {e}"
+#         logger.error(error_message)
+
+
+def run_user_session(user_email: str, env_vars: Dict[str, Any], logger: AppLogger) -> None:
+    """
+    Authenticate a user, create Gmail service and run Gmail API operations.
+
+    Args:
+        user_email (str): Gmail address of the user.
+        env_vars (dict): Environment variables including credentials paths and scopes.
+        logger (AppLogger): Logger instance for recording operations.
+    """
+    try:
+        authenticator = GmailAuthenticator(credentials_path=env_vars["creds_path"])
+
+        # Token path per user
+        token_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tokens")
+        os.makedirs(token_dir, exist_ok=True)
+        user_token_path = os.path.join(token_dir, f"{user_email.replace('@','_at_')}.json")
+
+        # Authenticate user
+        creds = authenticator.authenticate_user(
+            user_email=user_email,
+            scopes=env_vars["scopes"],
+            token_storage_path=user_token_path
+        )
+
+        # Create Gmail service and client
+        gmail_service = authenticator.get_service_for_user(creds)
+        gmail_client = GmailClient(gmail_service)
+
+        # Example operation: get profile
+        profile = gmail_client.get_profile()
+        logger.info(f"User {user_email} profile: {profile}")
+
+    except Exception as e:
+        _, _, exec_tb = sys.exc_info()
+        line_number = exec_tb.tb_lineno if exec_tb else "unknown"
+        function_name = exec_tb.tb_frame.f_code.co_name if exec_tb else "unknown"
+        error_message = f"User session failed for '{user_email}' in '{function_name}' at line {line_number}: {e}"
+        logger.error(error_message)
+        print(error_message)
+
+
 def main():
+    """
+    Main entry point: setup logger, load environment, prompt user and run session.
+    """
     logger = AppLogger("main.log")
-    path_relative_env_from_app = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../config", ".env")
+    path_relative_env_from_app = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "../config",
+        ".env"
+    )
 
     try:
         env_vars = load_environment_variables(path_relative_env_from_app)
-        authenticator = GmailAuthenticator(
-            credentials_path=env_vars["creds_path"],
-            token_path=env_vars["token_path"],
-        )
-        authenticator.authenticate(env_vars["scopes"])
-        gmail_service = authenticator.get_service()
-        gmail_client = GmailClient(gmail_service)
-        profile = gmail_client.get_profile()
-        profile = gmail_client.get_profile()
-        profile = gmail_client.get_profile()
-        logger.debug(f'------------------------------------------------------>> Profile: {profile}')
+
+        # Prompt user for email
+        user_email = input("Enter your Gmail address: ").strip()
+        if not user_email:
+            raise ValueError("A valid Gmail address is required")
+
+        # Run user session (auth + Gmail operations)
+        run_user_session(user_email, env_vars, logger)
 
     except Exception as e:
-        print(f"Application failed: {e}")
-        _,_, exec_tb = sys.exc_info()
-        line_number = exec_tb.tb_lineno if exec_tb else 'unknown'
-        function_name = exec_tb.tb_frame.f_code.co_name if exec_tb else 'unknown'
-        error_message = f"Application failed: '{function_name}' at line {line_number}: {e}"
+        _, _, exec_tb = sys.exc_info()
+        line_number = exec_tb.tb_lineno if exec_tb else "unknown"
+        function_name = exec_tb.tb_frame.f_code.co_name if exec_tb else "unknown"
+        error_message = f"Application failed in '{function_name}' at line {line_number}: {e}"
         logger.error(error_message)
-
-
-def clear_files_in_directory() -> None:
-    """
-    Clear the contents of all files in the 'logs' directory relative
-    to the directory from which the script is executed.
-
-    Raises:
-        FileNotFoundError: If the logs directory does not exist.
-        Exception: If any command fails.
-    """
-    import subprocess
-    # Construir la ruta absoluta del subdirectorio 'logs'
-    current_dir = os.getcwd()  # directorio desde donde se ejecuta el script
-    directory = os.path.join(current_dir, "logs")
-
-    if not os.path.isdir(directory):
-        raise FileNotFoundError(f"Logs directory does not exist: {directory}")
-
-    # Vaciar cada archivo usando 'truncate' de manera segura
-    for filename in os.listdir(directory):
-        file_path = os.path.join(directory, filename)
-        if os.path.isfile(file_path):
-            try:
-                subprocess.run(["truncate", "-s", "0", file_path], check=True)
-                # print(f"Cleared: {file_path}")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to clear {file_path}: {e}")
-
-
+        print(error_message)
 
 if __name__ == "__main__":
-    clear_files_in_directory()
+    Utils.clear_files_in_directory()
     main()
