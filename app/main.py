@@ -65,22 +65,25 @@ def main():
         error_message = f"Application failed: '{function_name}' at line {line_number}: {e}"
         logger.error(error_message)
 
-def clear_files_in_directory(directory: str="/home/jmorenos/workarea/githubRepo/smart-newsletters/logs/") -> None:
+
+def clear_files_in_directory() -> None:
     """
-    Clear the contents of all files in the given directory.
-    
-    Args:
-        directory (str): Path to the target directory.
-    
+    Clear the contents of all files in the 'logs' directory relative
+    to the directory from which the script is executed.
+
     Raises:
-        FileNotFoundError: If the directory does not exist.
+        FileNotFoundError: If the logs directory does not exist.
         Exception: If any command fails.
     """
     import subprocess
-    if not os.path.isdir(directory):
-        raise FileNotFoundError(f"Directory does not exist: {directory}")
+    # Construir la ruta absoluta del subdirectorio 'logs'
+    current_dir = os.getcwd()  # directorio desde donde se ejecuta el script
+    directory = os.path.join(current_dir, "logs")
 
-    # Use shell command 'truncate' safely on each file
+    if not os.path.isdir(directory):
+        raise FileNotFoundError(f"Logs directory does not exist: {directory}")
+
+    # Vaciar cada archivo usando 'truncate' de manera segura
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
         if os.path.isfile(file_path):
@@ -89,6 +92,7 @@ def clear_files_in_directory(directory: str="/home/jmorenos/workarea/githubRepo/
                 # print(f"Cleared: {file_path}")
             except subprocess.CalledProcessError as e:
                 print(f"Failed to clear {file_path}: {e}")
+
 
 
 if __name__ == "__main__":
